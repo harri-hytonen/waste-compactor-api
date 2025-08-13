@@ -1,0 +1,117 @@
+openapi: 3.1.0
+info:
+  title: Waste Compactor API
+  version: 1.0.0
+  description: >
+    Example API for communication between a waste compactor and a backend system.
+    This model is suitable for Swagger UI testing on GitHub Pages.
+servers:
+  - url: https://sandbox.api.example.com/v1
+    description: Sandbox environment
+  - url: https://api.example.com/v1
+    description: Production environment
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Checks that the API is responding and returns the version number.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: 1.0.0
+  /entitlements/check:
+    post:
+      summary: Check entitlement
+      description: >
+        Verifies whether the user has the right to operate a specific compactor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: user-12345
+                deviceId:
+                  type: string
+                  example: compactor-67890
+      responses:
+        '200':
+          description: Decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowed:
+                    type: boolean
+                    example: true
+                  reason:
+                    type: string
+                    example: Entitlement valid
+  /devices/{deviceId}/commands:
+    post:
+      summary: Send command to compactor
+      description: Sends a command (e.g., StartCycle) to the compactor.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: compactor-67890
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                commandId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                type:
+                  type: string
+                  enum: [UnlockHatch, LockHatch, StartCycle, StopCycle, EmergencyStop]
+                  example: StartCycle
+      responses:
+        '202':
+          description: Command accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: queued
+                  acknowledgedAt:
+                    type: string
+                    format: date-time
+                    example: "2025-08-13T09:00:00Z"
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.com/oauth2/authorize
+          tokenUrl: https://auth.example.com/oauth2/token
+          scopes:
+            read:devices: Read device status
+            write:commands: Send command
+security:
+  - OAuth2: [read:devices, write:commands]
