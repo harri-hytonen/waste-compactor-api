@@ -15,6 +15,8 @@ info:
     If POST methods fail or give a timeout, the compactor MUST persist the message 
     locally and retry after a backoff period, until the message has been 
     successfully delivered. If storage space runs out, then the oldest message is overwritten.
+
+    This API is inspired by [Zalando RESTful API and Event Guidelines](https://opensource.zalando.com/restful-api-guidelines/).
   contact:
     name: NN
   x-api-id: "urn:example:waste-compactor-api"
@@ -92,7 +94,7 @@ paths:
   /compactors/{compactor_id}/events:
     post:
       tags: [events]
-      summary: Send compactor event
+      summary: Send compactor event to backend
       operationId: post_event
       description: Send event to backend when compactor state changes. 
       parameters:
@@ -148,7 +150,7 @@ paths:
   /compactors/{compactor_id}/alarm-events:
     post:
       tags: [alarms]
-      summary: Send compactor alarm event (activated or cleared)
+      summary: Send compactor alarm event (activated or cleared) to backend
       operationId: post_alarms
       description: Send compactor alarm event (activated or cleared) to backend.
       parameters:
