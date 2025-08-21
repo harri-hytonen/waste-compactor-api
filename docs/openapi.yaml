@@ -2,10 +2,19 @@ openapi: 3.1.0
 info:
   title: Waste Compactor API
   version: 1.0.0
-  description: >
-    Open and vendor-neutral HTTPS/JSON API between a self-service waste compactor and a backend system.
-    The direction of the API is compactor→backend, where compactor acts as a client and backend acts as a server.
-    Security model is based on mutual TLS (mTLS) where both sides prove their identity by using X.509 certificates.
+  description: |
+    Open and vendor-neutral HTTPS/JSON API between a self-service waste compactor and 
+    a backend system.
+
+    The direction of the API is compactor→backend, where compactor acts as a client 
+    and backend acts as a server.
+    
+    Security model is based on mutual TLS (mTLS) where both sides prove their 
+    identity by using X.509 certificates.
+
+    If POST methods fail or give a timeout, the compactor MUST persist the message 
+    locally and retry after a backoff period, until the message has been 
+    successfully delivered. If storage space runs out, then the oldest message is overwritten.
   contact:
     name: NN
   x-api-id: "urn:example:waste-compactor-api"
@@ -35,7 +44,7 @@ paths:
       operationId: get_health
       description: >
         Checks that the API in the backend is responding.
-        Infra monitoring service can call this operation in order to check that service is alive.
+        Infra monitoring service MAY call this method in order to check that service is alive.
       responses:
         '200':
           description: OK
@@ -59,7 +68,7 @@ paths:
       operationId: post_info
       description: >
         Send compactor information e.g. identification, model and version to backend.
-        Compactor sends this message after SW restart or at least once in 24h. 
+        Compactor MUST send this message after SW restart or at least once in 24h. 
       parameters:
         - $ref: '#/components/parameters/CompactorId'
       requestBody:
@@ -113,8 +122,8 @@ paths:
       operationId: post_status
       description: >
         Send compactor status to backend.
-        Compactor must call this operation repeatedly in 15 minute itervals.
-        Backend must set connection status DISCONNECTED if no new request has been received for 16 minutes,
+        Compactor MUST call this method repeatedly in 15 minute itervals.
+        Backend MUST set connection status DISCONNECTED if no new request has been received for 16 minutes,
         otherwise connection status is CONNECTED.  
       parameters:
         - $ref: '#/components/parameters/CompactorId'
