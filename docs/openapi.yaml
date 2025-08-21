@@ -1,139 +1,400 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: Waste Compactor API
   version: 1.0.0
   description: >
-    Example API for communication between a waste compactor and a backend system.
-    This model is suitable for Swagger UI testing on GitHub Pages.
+    Open and vendor-neutral HTTPS/JSON API between a self-service waste compactor and a backend system.
+    The direction of the API is compactor→backend, where compactor acts as a client and backend acts as a server.
+    Security model is based on mutual TLS (mTLS) where both sides prove their identity by using X.509 certificates.
   contact:
-    name: harri
+    name: NN
+  x-api-id: "urn:example:waste-compactor-api"
+  x-audience: "external-partner"
 servers:
-  - url: https://sandbox.api.example.com/v1
-    description: Sandbox environment
-  - url: https://api.example.com/v1
-    description: Production environment
+  - url: https://api.example.com
+    description: Production
+  - url: https://sandbox.api.example.com
+    description: Sandbox
 
-# Recommendation: describe used tags
 tags:
-  - name: Health
-    description: System health and meta endpoints.
-  - name: Entitlements
-    description: Authorization and entitlement checks.
-  - name: Devices
-    description: Device operations and commands.
+  - name: health
+  - name: events
+  - name: telemetry
+  - name: alarms
+  - name: entitlements
+
+security:
+  - mutualTLS: []
 
 paths:
   /health:
     get:
-      tags: [Health]
-      operationId: getHealth
-      summary: Health check
-      description: Checks that the API is responding and returns the version number.
+      tags: [health]
+      summary: API health check
+      operationId: get_health
+      description: Checks that the API in the backend is responding and returns the version number.
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  version:
-                    type: string
-                    example: 1.0.0
+                $ref: '#/components/schemas/Health'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
-  /entitlements/check:
+  /compactors/{compactor_id}/events:
     post:
-      tags: [Entitlements]
-      operationId: checkEntitlement
-      summary: Check entitlement
-      description: >
-        Verifies whether the user has the right to operate a specific compactor.
+      tags: [events]
+      summary: Send compactor event
+      operationId: post_event
+      description: Send event to backend when compactor state changes. 
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                userId:
-                  type: string
-                  example: user-12345
-                deviceId:
-                  type: string
-                  example: compactor-67890
+              $ref: '#/components/schemas/Event'
+      responses:
+        '204':
+          description: Event accepted and processed successfully; no response body.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /compactors/{compactor_id}/telemetry:
+    post:
+      tags: [telemetry]
+      summary: Send compactor telemetry samples
+      operationId: post_telemetry
+      description: Send compactor telemetry samples to backend.
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Telemetry'
+      responses:
+        '204':
+          description: Telemetry accepted and processed successfully; no response body.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /compactors/{compactor_id}/alarms:
+    post:
+      tags: [alarms]
+      summary: Send compactor alarm event (activated or cleared)
+      operationId: post_alarms
+      description: Send compactor alarm event (activated or cleared) to backend.
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Alarm'
+      responses:
+        '204':
+          description: Alarm event accepted and processed successfully; no response body.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /compactors/{compactor_id}/entitlement-checks:
+    post:
+      tags: [entitlements]
+      summary: Check customer entitlements
+      operationId: check_entitlements
+      description: Check entitlements for the given credential. 
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credential'
       responses:
         '200':
-          description: Decision
+          description: Entitlement was evaluated.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  allowed:
-                    type: boolean
-                    example: true
-                  reason:
-                    type: string
-                    example: Entitlement valid
-
-  /devices/{deviceId}/commands:
-    post:
-      tags: [Devices]
-      operationId: sendDeviceCommand
-      summary: Send command to compactor
-      description: Sends a command (e.g., StartCycle) to the compactor.
-      parameters:
-        - name: deviceId
-          in: path
-          required: true
-          schema:
-            type: string
-          example: compactor-67890
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                commandId:
-                  type: string
-                  format: uuid
-                  example: "123e4567-e89b-12d3-a456-426614174000"
-                type:
-                  type: string
-                  enum: [UnlockHatch, LockHatch, StartCycle, StopCycle, EmergencyStop]
-                  example: StartCycle
-      responses:
-        '202':
-          description: Command accepted for processing
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: queued
-                  acknowledgedAt:
-                    type: string
-                    format: date-time
-                    example: "2025-08-13T09:00:00Z"
+                $ref: '#/components/schemas/EntitlementCheckResponse'        
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
 components:
   securitySchemes:
-    OAuth2:
-      type: oauth2
-      flows:
-        authorizationCode:
-          authorizationUrl: https://auth.example.com/oauth2/authorize
-          tokenUrl: https://auth.example.com/oauth2/token
-          scopes:
-            read:devices: Read device status
-            write:commands: Send command
+    mutualTLS:
+      type: mutualTLS
+      description: Client and server authentication (X.509) via mutual TLS.
 
-security:
-  - OAuth2: [read:devices, write:commands]
+  parameters:
+    CompactorId:
+      name: compactor_id
+      in: path
+      required: true
+      description: Unique compactor identifier
+      schema:
+        type: string
+        examples: [WC-12345]
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: mTLS authentication failed (or missing)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Authenticated but not authorized to perform the operation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ServerError:
+      description: Server error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    Health:
+      type: object
+      description: API health indicator
+      properties:
+        status:
+          type: string
+          enum: [OK, DEGRADED, ERROR]
+          examples: [OK]
+        version:
+          type: string
+          examples: ["1.0.0"]
+      required: [status, version]
+
+    Credential:
+      type: object
+      description: Customer credential scanned/entered at device
+      properties:
+        type:
+          type: string
+          enum: [PIN, QR, RFID]
+        value:
+          type: string
+          examples: ["1234567890"]
+      required: [type, value]
+
+    EntitlementCheckResponse:
+      type: object
+      description: >
+        Response to entitlements check request. 
+        Defines allowed operations for the end customer. 
+      properties:
+        locale: 
+          type: string
+          description: >
+            IETF BCP47 language tag to use for UI localization (e.g., "fi-FI", "sv-SE", "en-GB").
+            Use lowercase language + uppercase region.
+          example: fi-FI
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/EntitlementDecision' }
+        count:
+          type: integer
+          examples: [1]
+      required: [items]
+
+    EntitlementDecision:
+      type: object
+      description: Description of an entitlement.
+      properties:
+        action:
+          type: string
+          description: Entitled action
+          enum: [UNLOCK_HATCH]
+        allowed:
+          type: boolean
+          description: true if action is allowed, false otherwise
+          examples: [false]
+        reason:
+          type: string
+          description: >
+            Human-readable reason text if not allowed.
+            This text is already localized in the backend based on customer profile.
+          examples: ["Käyttöperehdytys suorittamatta"]
+        valid_until:
+          type: string
+          format: date-time
+          description: When the entitlement expires; RFC 3339 timestamp
+      required: [action, allowed]
+
+    Telemetry:
+      type: object
+      description: Compactor telemetry message
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp when samples were taken
+        compactor_id:
+          type: string
+          description: Unique compactor identifier
+          examples: ["WC-12345"]
+        samples:
+          type: array
+          items:
+            $ref: '#/components/schemas/TelemetrySample'
+        count:
+          type: integer
+          examples: [1]
+      required: [timestamp, compactor_id, samples]
+
+    TelemetrySample:
+      type: object
+      description: A single telemetry sample
+      properties:
+        id:
+          type: string
+          description: Parameter identifier
+          examples: ["temperature"]
+        value:
+          type: number
+          description: Parameter value
+          examples: [-8.2]
+        unit:
+          type: string
+          description: Parameter SI unit
+          examples: ["°C"]
+        extras:
+          type: object
+          description: Additional information
+          additionalProperties: true
+      required: [timestamp, parameter_name, parameter_value]
+
+    Event:
+      type: object
+      description: An event indicating state change in compactor
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp
+        compactor_id:
+          type: string
+          description: Unique compactor identifier
+          examples: ["WC-12345"]
+        event_id:
+          type: string
+          description: Unique event identifier
+          examples: ["dc65a2b4-8f0b-486f-94ff-861382a3b23a"]
+        code:
+          type: string
+          description: >
+            Machine-specific or standardized code.
+            Can be used as a key to localize description text.
+          examples: ["E-1234"]
+        description:
+          type: string
+          description: Event description in plain text; not localized
+          examples: ["Compression started"]
+        details:
+          type: object
+          description: Additional information
+          additionalProperties: true
+      required: [timestamp, compactor_id, event_id, code]
+
+    Alarm:
+      type: object
+      description: An alarm event indicating start or end of abnormal situation in compactor
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp
+        compactor_id:
+          type: string
+          description: Unique compactor identifier
+          examples: ["WC-12345"]
+        alarm_id:
+          type: string
+          description: Stable id to correlate activation/clear.
+          examples: ["cb825031-7ee6-411a-941b-f9a13aadb181"]
+        alarm_type:
+          type: string
+          enum: [ACTIVATED, CLEARED]
+        code:
+          type: string
+          description: >
+            Machine-specific or standardized code.
+            Can be used as a key to localize description text.
+          examples: ["AL_1234"]
+        description:
+          type: string
+          description: Alarm event description in plain text; not localized
+          examples: ["Hydraulic pump failed"]
+        severity:
+          type: string
+          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+        details:
+          type: object
+          description: Additional information
+          additionalProperties: true
+      required: [timestamp, compactor_id, alarm_type, code]
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details
+      properties:
+        type:
+          type: string
+          format: uri
+          examples: ["https://api.example.com/problems/bad-request"]
+        title:
+          type: string
+          examples: ["Bad Request"]
+        status:
+          type: integer
+          examples: [400]
+        detail:
+          type: string
+          examples: ["The 'value' field is required."]
+        instance:
+          type: string
+          format: uri
+          examples: ["https://api.example.com/requests/123e4567-e89b-12d3-a456-426614174000"]
+      required: [title, status]
