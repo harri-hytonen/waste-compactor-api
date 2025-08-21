@@ -18,8 +18,9 @@ servers:
 
 tags:
   - name: health
+  - name: info
+  - name: status
   - name: events
-  - name: telemetry
   - name: alarms
   - name: entitlements
 
@@ -32,7 +33,9 @@ paths:
       tags: [health]
       summary: API health check
       operationId: get_health
-      description: Checks that the API in the backend is responding and returns the version number.
+      description: >
+        Checks that the API in the backend is responding.
+        Infra monitoring service can call this operation in order to check that service is alive.
       responses:
         '200':
           description: OK
@@ -40,6 +43,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+        '503':
+          description: Service is unavailable or degraded
+          content: 
+            application/json: 
+              schema:
+                $ref: '#/components/schemas/Health'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /compactors/{compactor_id}/info:
+    post:
+      tags: [info]
+      summary: Send compactor information to backend
+      operationId: post_info
+      description: >
+        Send compactor information e.g. identification, model and version to backend.
+        Compactor sends this message after SW restart or at least once in 24h. 
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Info'
+      responses:
+        '204':
+          description: Compactor information has been updated in the backend; no response body.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -69,12 +106,16 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /compactors/{compactor_id}/telemetry:
+  /compactors/{compactor_id}/status:
     post:
-      tags: [telemetry]
-      summary: Send compactor telemetry samples
-      operationId: post_telemetry
-      description: Send compactor telemetry samples to backend.
+      tags: [status]
+      summary: Send compactor status to backend.
+      operationId: post_status
+      description: >
+        Send compactor status to backend.
+        Compactor must call this operation repeatedly in 15 minute itervals.
+        Backend must set connection status DISCONNECTED if no new request has been received for 16 minutes,
+        otherwise connection status is CONNECTED.  
       parameters:
         - $ref: '#/components/parameters/CompactorId'
       requestBody:
@@ -82,10 +123,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Telemetry'
+              $ref: '#/components/schemas/Status'
       responses:
         '204':
-          description: Telemetry accepted and processed successfully; no response body.
+          description: Status accepted and processed successfully; no response body.
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -95,7 +136,7 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /compactors/{compactor_id}/alarms:
+  /compactors/{compactor_id}/alarm-events:
     post:
       tags: [alarms]
       summary: Send compactor alarm event (activated or cleared)
@@ -207,6 +248,34 @@ components:
           examples: ["1.0.0"]
       required: [status, version]
 
+    Info:
+      type: object
+      description: >
+        Compactor information.
+        (needs to be studied what information is made available)
+      properties:
+        compactor_id:
+          type: string
+          description: Unique compactor identifier
+          examples: ["WC-12345"]
+        vendor: 
+          type: string
+          description: Compactor manufacturer
+          examples: ["EcoPress"] 
+        model: 
+          type: string
+          description: Compactor model name
+          examples: ["EMC mini"]
+        hw_version:
+          type: string
+          description: Hardware version
+          examples: ["1.2"]
+        sw_version:
+          type: string
+          description: Software version
+          examples: ["1.1"]
+      required: [compactor_id, sw_version]
+
     Credential:
       type: object
       description: Customer credential scanned/entered at device
@@ -230,7 +299,7 @@ components:
           description: >
             IETF BCP47 language tag to use for UI localization (e.g., "fi-FI", "sv-SE", "en-GB").
             Use lowercase language + uppercase region.
-          example: fi-FI
+          examples: ["fi-FI"]
         items:
           type: array
           items: { $ref: '#/components/schemas/EntitlementDecision' }
@@ -263,9 +332,9 @@ components:
           description: When the entitlement expires; RFC 3339 timestamp
       required: [action, allowed]
 
-    Telemetry:
+    Status:
       type: object
-      description: Compactor telemetry message
+      description: Compactor status message
       properties:
         timestamp:
           type: string
@@ -275,36 +344,70 @@ components:
           type: string
           description: Unique compactor identifier
           examples: ["WC-12345"]
-        samples:
+        measurements:
           type: array
+          description: List of measurements (telemetry)
           items:
-            $ref: '#/components/schemas/TelemetrySample'
-        count:
+            $ref: '#/components/schemas/Measurement'
+        measurements_count:
           type: integer
+          description: Count of measurements
           examples: [1]
-      required: [timestamp, compactor_id, samples]
+        active_alarms:
+          type: array       
+          description: List of active alarms 
+          items:
+            $ref: '#/components/schemas/ActiveAlarm'
+        active_alarms_count:
+          type: integer
+          description: Count of active alarms
+          examples: [1]
+      required: [timestamp, compactor_id, measurements, active_alarms]
 
-    TelemetrySample:
+    Measurement:
       type: object
-      description: A single telemetry sample
+      description: A single measurement
       properties:
-        id:
+        name:
           type: string
-          description: Parameter identifier
+          description: Measurement name
           examples: ["temperature"]
         value:
           type: number
-          description: Parameter value
+          description: Measurement value
           examples: [-8.2]
         unit:
           type: string
-          description: Parameter SI unit
+          description: Measurement SI unit
           examples: ["°C"]
         extras:
           type: object
           description: Additional information
           additionalProperties: true
-      required: [timestamp, parameter_name, parameter_value]
+      required: [name, value]
+
+    ActiveAlarm:
+      type: object
+      description: An alarm that is currently active in the compactor
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Time when alarm became active; RFC 3339 timestamp
+        code:
+          type: string
+          description: >
+            Machine-specific or standardized code.
+            Can be used as a key to localize description text.
+          examples: ["AL_1234"]
+        description:
+          type: string
+          description: Alarm event description in plain text; not localized
+          examples: ["Hydraulic pump failed"]
+        severity:
+          type: string
+          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+      required: [timestamp, code, severity]
 
     Event:
       type: object
@@ -350,7 +453,7 @@ components:
           type: string
           description: Unique compactor identifier
           examples: ["WC-12345"]
-        alarm_id:
+        alarm_event_id:
           type: string
           description: Stable id to correlate activation/clear.
           examples: ["cb825031-7ee6-411a-941b-f9a13aadb181"]
@@ -374,7 +477,7 @@ components:
           type: object
           description: Additional information
           additionalProperties: true
-      required: [timestamp, compactor_id, alarm_type, code]
+      required: [timestamp, compactor_id, alarm_event_id, alarm_type, code]
 
     Problem:
       type: object
