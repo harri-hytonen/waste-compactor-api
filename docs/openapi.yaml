@@ -88,6 +88,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -114,6 +116,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -144,6 +148,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -170,6 +176,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -200,6 +208,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -244,8 +254,21 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-
+    UnprocessableContent:
+      description: Semantic validation failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
+    Timestamp:
+      type: string
+      description: RFC 3339 timestamp with timezone (Z or ±hh:mm).
+      format: date-time
+      # Varmistaa, että aikavyöhyke on mukana
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+\-]\d{2}:\d{2})$'
+      examples: ["2025-08-27T11:05:00Z", "2025-08-27T14:05:00+03:00"]
+
     Health:
       type: object
       description: API health indicator
@@ -338,19 +361,30 @@ components:
             This text is already localized in the backend based on customer profile.
           examples: ["Käyttöperehdytys suorittamatta"]
         valid_until:
-          type: string
-          format: date-time
+          $ref: '#/components/schemas/Timestamp'
           description: When the entitlement expires; RFC 3339 timestamp
       required: [action, allowed]
+      allOf:
+        - if:
+            properties: { allowed: { const: false } }
+          then:
+            required: [reason]
+            not:
+              required: [valid_until]
+        - if:
+            properties: { allowed: { const: true } }
+          then:
+            required: [valid_until]
+            not:
+              required: [reason]
 
     Status:
       type: object
       description: Compactor status message
       properties:
         timestamp:
-          type: string
-          format: date-time
-          description: RFC 3339 timestamp when samples were taken
+          $ref: '#/components/schemas/Timestamp'
+          description: Timestamp when status was measured.
         compactor_id:
           type: string
           description: Unique compactor identifier
@@ -402,9 +436,8 @@ components:
       description: An alarm that is currently active in the compactor
       properties:
         timestamp:
-          type: string
-          format: date-time
-          description: Time when alarm became active; RFC 3339 timestamp
+          $ref: '#/components/schemas/Timestamp'
+          description: Time when alarm became active.
         code:
           type: string
           description: >
@@ -425,9 +458,8 @@ components:
       description: An event indicating state change in compactor
       properties:
         timestamp:
-          type: string
-          format: date-time
-          description: RFC 3339 timestamp
+          $ref: '#/components/schemas/Timestamp'
+          description: Time when event occurred.
         compactor_id:
           type: string
           description: Unique compactor identifier
@@ -457,9 +489,8 @@ components:
       description: An alarm event indicating start or end of abnormal situation in compactor
       properties:
         timestamp:
-          type: string
-          format: date-time
-          description: RFC 3339 timestamp
+          $ref: '#/components/schemas/Timestamp'
+          description: Time when alarm event occured.
         compactor_id:
           type: string
           description: Unique compactor identifier
