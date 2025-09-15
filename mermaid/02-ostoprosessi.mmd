@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    participant A as Asiakas (mobiilisovellus)
+    participant V as Verkkokauppa
+    participant T as Taustajärjestelmä
+    participant M as Maksupalvelu
+
+    Note over A,V: Kertaluonteinen ostoprosessi
+
+    A->>V: Valitse asiointipiste ja palvelu
+    V->>T: Hae hinnasto ja lajikkeet
+    T-->>V: Hinnasto
+    V-->>A: Näytä hinnasto
+
+    A->>V: Tee kertaostos (määrä, lajike)
+    V->>M: Laheta maksupyyntö
+    M-->>V: Maksu onnistui
+
+    V->>T: Luo ostos ja laskutus
+    T-->>V: Ostos hyväksytty
+
+    V->>T: Generoi avauslupa (QR tai PIN)
+    T-->>V: Avauslupa ja voimassaolo
+    V-->>A: Toimita QR tai PIN koodi

@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    participant D as IP-puristimen ohjauslogiikka
+    participant GW as IoT gateway
+    participant S as waste-compactor-api
+    participant T as Taustajärjestelmä
+
+    Note over GW,S: Käynnistys ja perustietojen ilmoitus
+    alt Jos käynnistys
+        GW->>GW: Luo boot_id ja aikaleima
+        GW->>S: Avaa yhteys mTLS
+        S-->>GW: Kuittaus
+    end
+
+    alt Jos käynnistys tai 24h kulunut viimeisestä tietojen lähetyksestä
+        GW->>D: Lue puristimen perustiedot
+        D-->>GW: model, vendor, serialnumber, hw_version, sw_version
+
+        GW->>GW: Kerää gatewayn tiedot (vastaavasti)
+
+        GW->>S: Lähetä tiedot
+        S->>T: Lähetä tiedot
+        T->>T: Päivitä puristimen ja gatewayn tiedot jos muuttuneet
+        T-->>S: Kuittaus
+        S-->>GW: Kuittaus
+    end

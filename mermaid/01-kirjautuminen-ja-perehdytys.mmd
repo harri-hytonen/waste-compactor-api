@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    participant A as Asiakas (mobiilisovellus)
+    participant V as Verkkokauppa
+    participant T as Taustajärjestelmä
+
+    Note over A,T: Kirjautuminen ja perehdytys
+    A->>V: Kirjautuminen (Suomi.fi / OIDC)
+    V->>T: Autentikoinnin validointi
+    T-->>V: OK
+    V-->>A: Kirjautuminen onnistui
+    A->>V: Tarkista perehdytysstatus
+    V->>T: Hae perehdytysstatus
+    T-->>V: Status (suoritettu / ei suoritettu)
+    alt Ei perehdytystä
+        V-->>A: Ohjaa perehdytysvideoon ja kuittaukseen
+        A->>V: Kuittaa perehdytys
+        V->>T: Tallenna perehdytysstatus
+    end

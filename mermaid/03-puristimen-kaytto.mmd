@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    participant A as Asiakas 
+    participant P as IP-puristimen ohjauslogiikka
+    participant I as IoT gateway
+    participant W as waste-compactor-api
+    participant T as Taustajärjestelmä
+
+    Note over A,T: Puristimen käyttö
+    A->>P: Tunnistaudu puristimella (QR/PIN)
+    P->>I: Tarkista avauslupa (QR/PIN)
+    I->>W: Tarkista avauslupa (QR/PIN)
+    W->>T: Tarkista avauslupa (QR/PIN)
+    T->>T: Hae koodia vastaava asiastieto
+    T->>T: Tarkista onko avauslupa
+    T-->>W: Lupa OK
+    W-->>I: Lupa OK
+    I-->>P: Lupa OK
+    P->>P: Avaa luukun lukituks
+    P->>I: Lähetä tapahtuma: lukitus avattu
+    I->>W: Tapahtuma: lukitus avattu
+    W->>T: Tapahtuma: lukitus avattu
+    T->>T: Tallenna tapahtuma historiaan
+    A->>P: Avaa luukku
+    P->>I: Lähetä tapahtuma: Luukku avattu
+    I->>W: Tapahtuma: Luukku avattu
+    W->>T: Tapahtuma: luukku avattu
+    T->>T: Tallenna tapahtuma historiaan
+    A->>P: Lataa jäte syöttöyksikköön
+    A->>P: Sulje luukku
+    P->>I: Lähetä tapahtuma: Luukku suljettu ja lukittu
+    I->>W: Tapahtuma: Luukku suljettu ja lukittu
+    W->>T: Tapahtuma: luukku suljettu ja lukittu
+    T->>T: Tallenna tapahtuma historiaan
+    T->>T: Vähennä asiakkaan avauslupia
+    alt Puristuksen automaattinen käynnistys taustalla, kun ehto täyttyy
+        P->>P: Puristus aloitettu
+        P->>I: Lähetä tapahtuma: puristus aloitettu
+        I->>W: Tapahtuma: puristus aloitettu
+        W->>T: Tapahtuma: puristus aloitettu
+        T->>T: Tallenna tapahtuma historiaan
+        P->>P: Puristus lopetettu
+        P->>I: Lähetä tapahtuma: puristus lopetettu
+        I->>W: Tapahtuma: puristus lopetettu
+        W->>T: Tapahtuma: puristus lopetettu
+        T->>T: Tallenna tapahtuma historiaan
+    end

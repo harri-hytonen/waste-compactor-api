@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    participant A as Asiakas
+    participant V as Verkkokauppa
+    participant ID as Tunnistuspalvelu
+    participant T as Taustajarjestelmä
+    participant E as Viestipalvelu
+    participant P as Maksupalvelu
+
+    Note over A,V: Rekisteröityminen uutena asiakkaana
+
+    A->>V: Avaa lomake
+    V-->>A: Nayta ehdot ja tietosuojaseloste
+    A->>V: Syottää omat tietonsa ja suostumukset
+
+    V->>ID: Aloita vahva tunnistaminen
+    ID-->>V: Palauta tunnistetiedot
+
+    V->>P: Tokenoi maksukortti (valinnainen)
+    P-->>V: Maksutapatunnus
+
+    V->>T: Luo uusi asiakas
+    T-->>V: Asiakasnumero
+
+    V-->>A: Tili luotu
+    V->>E: Laheta vahvistuslinkki
+    E-->>A: Vahvistusviesti
+
+    A->>V: Klikkaa linkkia
+    V->>T: Merkitse yhteystieto vahvistetuksi
+    T-->>V: OK
+
+    V->>T: Aseta perehdytysstatus
+    T-->>V: OK
+
+    V-->>A: Siirry kirjautumiseen ja perehdytykseen

@@ -1,0 +1,11 @@
+sequenceDiagram
+    autonumber
+    participant A as Asiakas (mobiilisovellus / verkkokauppa)
+    participant S as Standardoitu API-kerros
+    participant T as Taustajärjestelmä
+
+    Note over A,S: Palautus/hyvitysprosessi (jos tarpeen)
+    A->>S: Pyydä hyvitys/palautus
+    S->>T: Käsittele hyvitys/palautus
+    T-->>S: Päivitys tehty
+    S-->>A: Ilmoita päätöksestä

@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    participant P as IP-puristimen ohjauslogiikka
+    participant I as IoT gateway
+    participant W as waste-compactor-api
+    participant T as Taustajärjestelmä
+    participant H as Huolto
+
+    Note over P,T: Hälytykset
+    alt Tarkitus esim. 1s välein
+        I->>P: Lue hälytykset
+        P-->>I: hälytykset
+        I->>I: Onko uusi hälytys aktiivinen?
+    end
+        alt Jos uusi hälytys aktiivinen
+            I->>W: Lähetä hälytys aktiivinen
+            W->>T: Hälytys aktiivinen
+            T->>T: Tallenna, lähetä notifikaatio
+            T->>H: Tilaa huolto
+            T-->>W: Kuittaus
+            W-->>I: Kuittaus
+        end
+        alt Jos hälytys poistunut
+            I->>W: Lähetä hälytys poistunut
+            W->>T: Hälytys poistunut
+            T->>T: Tallenna, näytä ja lähetä notifikaatio
+            T-->>W: Kuittaus
+            W-->>I: Kuittaus
+        end

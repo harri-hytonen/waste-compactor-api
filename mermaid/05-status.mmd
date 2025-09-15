@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    participant K as Syöttölaitteen käyttöliittymä
+    participant P as IP-puristimen ohjauslogiikka
+    participant I as IoT gateway
+    participant W as waste-compactor-api
+    participant T as Taustajärjestelmä
+    participant L as Logistiikka
+    participant M as Mobiilisovellus (asiakas)
+
+    Note over P,I: Sensori- ja tilatiedot
+    alt Tarkistus esim. 15m välein
+        I->>P: Lue sensori- ja tilatiedot
+        P-->>I: Sensori- ja tilatiedot, täyttöaste 75%
+    end
+        I->>I: Onko raportoitavaa?
+        I->>W: Lähetä sensori- ja tilatiedot, 75%
+        W->>T: Sensori- ja tilatiedot, 75%
+        T->>T: Tallenna tiedot
+        T-->>W: Kuittaus
+        W-->>I: Kuittaus
+        T->>L: Puristin täyttymässä, tilaa tyhjennys
+        M->>T: Hae IP-puristinten tilanne
+        T-->>M: Tilanne kaikilla puristimilla, huomio: puristin NN 75% täynnä
+    alt Jos puristin täynnä
+        P->>K: täyttöaste 100%
+        K->>K: Näytä teksti: Ei käytössä - puristin täynnä
+    end
