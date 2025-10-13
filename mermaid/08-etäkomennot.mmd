@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    participant P as IP-puristimen ohjauslogiikka
+    participant I as IoT gateway
+    participant W as waste-compactor-api
+    participant T as Taustajärjestelmä
+    participant R as Rekisterikilven tunnistus
+    participant U as Puomi
+
+    Note over P,T: Etäkomentojen käyttö
+    alt Komentojen long-polling taustajärjestelmästä (toistuva prosessi)
+        I->>W: Hae komennot
+        W->>T: Onko komentoja jonossa?
+        T-->>W: Ei komentoja
+        W-->>I: Ei komentoja
+    end
+    R->>T: Auton rekisterinumero, jäteaseman tunnus
+    T->>T: Hae asiakastiedot
+    T->>T: Onko asiakas oikeutettu jäteaseman käyttöön? - Kyllä
+    T->>U: Avaa puomi
+    T->>T: Onko jäteasemalla IP-puristin? - Kyllä
+    T->>T: Onko asiakas oikeutettu IP-puristimen käyttöön? - Kyllä
+    T->>T: Laita komento jonoon: "avaa luukun lukitus"    
+    I->>W: Hae komennot
+    W->>T: Onko komentoja jonossa?
+    T-->>W: komento: "avaa luukun lukitus"
+    W-->>I: komento: "avaa luukun lukitus"
+    I->>P: Avaa luukun lukitus
+    P-->>I: Lukitus avattu
+    I->>W: Raportoi komennon suoritus OK
+    W->>T: Raportoi komennon suoritus OK

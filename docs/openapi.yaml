@@ -34,6 +34,7 @@ tags:
   - name: events
   - name: alarms
   - name: entitlements
+  - name: commands
 
 security:
   - mutualTLS: []
@@ -42,7 +43,7 @@ paths:
   /health:
     get:
       tags: [health]
-      summary: API health check
+      summary: API health check.
       operationId: get_health
       description: >
         Checks that the API in the backend is responding.
@@ -66,7 +67,7 @@ paths:
   /compactors/{compactor_id}/info:
     post:
       tags: [info]
-      summary: Send compactor information to backend
+      summary: Send compactor information to backend.
       operationId: post_info
       description: >
         Send compactor information e.g. identification, model and version to backend.
@@ -96,7 +97,7 @@ paths:
   /compactors/{compactor_id}/events:
     post:
       tags: [events]
-      summary: Send compactor event to backend
+      summary: Send compactor event to backend.
       operationId: post_event
       description: Send event to backend when compactor state changes. 
       parameters:
@@ -128,7 +129,7 @@ paths:
       operationId: post_status
       description: >
         Send compactor status to backend.
-        Compactor MUST call this method repeatedly in 15 minute itervals.
+        Compactor MUST call this method repeatedly in 15 minute intervals.
         Backend MUST set connection status DISCONNECTED if no new request has been received for 16 minutes,
         otherwise connection status is CONNECTED.  
       parameters:
@@ -156,7 +157,7 @@ paths:
   /compactors/{compactor_id}/alarm-events:
     post:
       tags: [alarms]
-      summary: Send compactor alarm event (activated or cleared) to backend
+      summary: Send compactor alarm event (activated or cleared) to backend.
       operationId: post_alarms
       description: Send compactor alarm event (activated or cleared) to backend.
       parameters:
@@ -184,7 +185,7 @@ paths:
   /compactors/{compactor_id}/entitlement-checks:
     post:
       tags: [entitlements]
-      summary: Check customer entitlements
+      summary: Check customer entitlements.
       operationId: check_entitlements
       description: Check entitlements for the given credential. 
       parameters:
@@ -213,6 +214,86 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /compactors/{compactor_id}/commands:
+    get:
+      tags: [commands]
+      summary: Get the next remote command for the compactor to execute.
+      operationId: get_next_command
+      description: >
+        Long-poll for a single remote command. 
+        The backend returns the next available command immediately,
+        or waits up to wait_seconds for one to arrive. If none arrive in time, returns 204 No Content.
+        After boot or SW restart, the compactor MUST create a random initial delay (0-60 s) before
+        starting the polling cycle. The compactor MUST NOT open a new GET /commands while a previous one is pending.
+        The backend MAY reject overlapping GET /commands with 409 Conflict.
+        The compactor MUST call this method again after the previous call returns,
+        but NOT more often than once per 1 minute. 
+        The compactor MUST enable TCP-keepalive that is long enough for keeping 
+        the socket open during long-polls.     
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
+        - name: wait_seconds
+          in: query
+          description: >
+            Maximum time to wait for a command before returning 204. 
+          schema: 
+            type: integer
+            minimum: 0
+            maximum: 300
+            default: 60
+      responses:
+        '200':
+          description: A single command to execute.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+        '204':
+          description: No command available within wait_seconds.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /compactors/{compactor_id}/commands/{command_id}/report:
+    post:
+      tags: [commands]
+      summary: Report command execution success or failure.
+      operationId: report_command_status
+      description: Report command execution success or failure. 
+      parameters:
+        - $ref: '#/components/parameters/CompactorId'
+        - $ref: '#/components/parameters/CommandId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandReport'
+      responses:
+        '204': 
+          description: Report accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: Command id was not found
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Command was already reported
+        '422': 
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 components:
   securitySchemes:
     mutualTLS:
@@ -228,6 +309,14 @@ components:
       schema:
         type: string
         examples: [WC-12345]
+    CommandId:
+      name: command_id
+      in: path
+      required: true
+      description: Unique command identifier
+      schema:
+        type: string
+        examples: [CMD-12345]
 
   responses:
     BadRequest:
@@ -244,6 +333,18 @@ components:
             $ref: '#/components/schemas/Problem'
     Forbidden:
       description: Authenticated but not authorized to perform the operation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Conflict with current resource state
       content:
         application/problem+json:
           schema:
@@ -364,19 +465,18 @@ components:
           $ref: '#/components/schemas/Timestamp'
           description: When the entitlement expires; RFC 3339 timestamp
       required: [action, allowed]
-      allOf:
-        - if:
-            properties: { allowed: { const: false } }
-          then:
-            required: [reason]
-            not:
-              required: [valid_until]
-        - if:
-            properties: { allowed: { const: true } }
-          then:
-            required: [valid_until]
-            not:
-              required: [reason]
+      if:
+        properties: 
+          allowed: 
+            const: false
+      then:
+        required: [reason]
+        not:
+          required: [valid_until]
+      else:
+        required: [valid_until]
+        not:
+          required: [reason]
 
     Status:
       type: object
@@ -520,6 +620,71 @@ components:
           description: Additional information
           additionalProperties: true
       required: [timestamp, compactor_id, alarm_event_id, alarm_type, code]
+
+    Command:
+      type: object
+      properties:
+        command_id:
+          type: string
+          description: Command identifier
+          examples: [CMD-12345]
+        type: 
+          type: string
+          enum: [UNLOCK_HATCH]
+          description: Command to execute
+        issued_at: 
+          $ref: '#/components/schemas/Timestamp'
+          description: Time when command was issued.
+        expire_at: 
+          $ref: '#/components/schemas/Timestamp'
+          description: Time after the command is re-issued if no command report was received.
+        attempt:
+          type: integer
+          minimum: 1
+          description: Attempt counter that is increased by 1 in every command re-issue.
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+          description: Command priority
+      required: [command_id, type, issued_at, attempt]
+
+    CommandReport:
+      type: object
+      properties:
+        command_id:
+          type: string
+          description: Command identifier
+          examples: [CMD-12345]
+        finished_at: 
+          $ref: '#/components/schemas/Timestamp'
+          description: Time when command was finished.
+        status: 
+          type: string
+          enum: [SUCCEEDED, FAILED]
+          description: Commmand execution status
+        error:
+          type: object
+          description: Error details if execution failed
+          required: [code]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+      required: [command_id, finished_at, status]
+      if:
+        properties: 
+          status: 
+            const: FAILED
+      then:
+        required: [error]
+      else:
+        not:
+          required: [error]
 
     Problem:
       type: object
