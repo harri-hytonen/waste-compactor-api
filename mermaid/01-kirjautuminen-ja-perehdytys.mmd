@@ -5,7 +5,7 @@ sequenceDiagram
     participant T as Taustajärjestelmä
 
     Note over A,T: Kirjautuminen ja perehdytys
-    A->>V: Kirjautuminen (Suomi.fi / OIDC)
+    A->>V: Kirjautuminen
     V->>T: Autentikoinnin validointi
     T-->>V: OK
     V-->>A: Kirjautuminen onnistui

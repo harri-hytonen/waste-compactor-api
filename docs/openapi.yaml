@@ -531,6 +531,38 @@ components:
           additionalProperties: true
       required: [name, value]
 
+    AlarmCode:
+      type: object
+      properties:
+        value:
+          type: string
+          description: >
+            Machine-specific or standardized alarm code.
+            Can be used as a key to localize description text.
+            See enumeration table for examples. 
+            NOTICE: Final enumeration table to be constructed in the implementation phase.
+          examples: ["A-0001"]
+        description:
+          type: string
+          description: >
+            Plain english text describing alarm in case 
+            localization is not available. 
+          examples: ["Hydraulic pump failed"]
+        severity:
+          type: string
+          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+      required: [code, description]
+      enum:
+        - code: A-0001
+          description: Hydraulic pump failed
+          severity: CRITICAL
+        - code: A-0002
+          description: Hatch open for too long
+          severity: MEDIUM
+        - code: A-0003
+          description: Connection to backend disconnected
+          severity: MEDIUM
+
     ActiveAlarm:
       type: object
       description: An alarm that is currently active in the compactor
@@ -538,20 +570,41 @@ components:
         timestamp:
           $ref: '#/components/schemas/Timestamp'
           description: Time when alarm became active.
-        code:
+        alarm_code:
+          $ref: '#/components/schemas/AlarmCode'
+      required: [timestamp, alarm_code, severity]
+
+    EventCode:
+      type: object
+      properties:
+        value:
           type: string
           description: >
-            Machine-specific or standardized code.
+            Machine-specific or standardized event code.
             Can be used as a key to localize description text.
-          examples: ["AL_1234"]
+            See enumeration table for examples. 
+            NOTICE: Final enumeration table to be constructed in the implementation phase.
+          examples: ["E-0001"]
         description:
           type: string
-          description: Alarm event description in plain text; not localized
-          examples: ["Hydraulic pump failed"]
-        severity:
-          type: string
-          enum: [CRITICAL, HIGH, MEDIUM, LOW]
-      required: [timestamp, code, severity]
+          description: >
+            Plain english text describing event in case 
+            localization is not available. 
+          examples: ["Compression started"]
+      required: [code, description]
+      enum:
+        - code: E-0001
+          description: Compression started
+        - code: E-0002
+          description: Compression finished
+        - code: E-0003
+          description: Hatch unlocked
+        - code: E-0004
+          description: Hatch locked
+        - code: E-0005
+          description: Hatch opened
+        - code: E-0006
+          description: Hatch closed
 
     Event:
       type: object
@@ -568,21 +621,13 @@ components:
           type: string
           description: Unique event identifier
           examples: ["dc65a2b4-8f0b-486f-94ff-861382a3b23a"]
-        code:
-          type: string
-          description: >
-            Machine-specific or standardized code.
-            Can be used as a key to localize description text.
-          examples: ["E-1234"]
-        description:
-          type: string
-          description: Event description in plain text; not localized
-          examples: ["Compression started"]
+        event_code:
+          $ref: '#/components/schemas/EventCode'
         details:
           type: object
           description: Additional information
           additionalProperties: true
-      required: [timestamp, compactor_id, event_id, code]
+      required: [timestamp, compactor_id, event_id, event_code]
 
     Alarm:
       type: object
@@ -599,27 +644,16 @@ components:
           type: string
           description: Stable id to correlate activation/clear.
           examples: ["cb825031-7ee6-411a-941b-f9a13aadb181"]
-        alarm_type:
+        alarm_state:
           type: string
           enum: [ACTIVATED, CLEARED]
-        code:
-          type: string
-          description: >
-            Machine-specific or standardized code.
-            Can be used as a key to localize description text.
-          examples: ["AL_1234"]
-        description:
-          type: string
-          description: Alarm event description in plain text; not localized
-          examples: ["Hydraulic pump failed"]
-        severity:
-          type: string
-          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+        alarm_code:
+          $ref: '#/components/schemas/AlarmCode'
         details:
           type: object
           description: Additional information
           additionalProperties: true
-      required: [timestamp, compactor_id, alarm_event_id, alarm_type, code]
+      required: [timestamp, compactor_id, alarm_event_id, alarm_type, alarm_code]
 
     Command:
       type: object

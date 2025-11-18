@@ -13,6 +13,8 @@ sequenceDiagram
     V-->>A: Näytä hinnasto
 
     A->>V: Tee kertaostos (määrä, lajike)
+    V->>T: Tarkista perehdytysstatus
+    T-->>V: Perehdytys suoritettu
     V->>M: Laheta maksupyyntö
     M-->>V: Maksu onnistui
 
