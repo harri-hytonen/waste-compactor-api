@@ -534,7 +534,7 @@ components:
     AlarmCode:
       type: object
       properties:
-        value:
+        code:
           type: string
           description: >
             Machine-specific or standardized alarm code.
@@ -578,7 +578,7 @@ components:
     EventCode:
       type: object
       properties:
-        value:
+        code:
           type: string
           description: >
             Machine-specific or standardized event code.
