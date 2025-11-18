@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Waste Compactor API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Open and vendor-neutral HTTPS/JSON API between a self-service waste compactor and 
     a backend system.
