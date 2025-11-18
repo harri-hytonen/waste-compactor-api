@@ -540,7 +540,8 @@ components:
             Machine-specific or standardized alarm code.
             Can be used as a key to localize description text.
             See enumeration table for examples. 
-            NOTICE: Final enumeration table to be constructed in the implementation phase.
+            NOTICE: This is an example list of enumerated alarms.
+            Final enumeration table to be constructed in the implementation phase.
           examples: ["A-0001"]
         description:
           type: string
@@ -583,7 +584,8 @@ components:
             Machine-specific or standardized event code.
             Can be used as a key to localize description text.
             See enumeration table for examples. 
-            NOTICE: Final enumeration table to be constructed in the implementation phase.
+            NOTICE: This is an example list of enumerated events.
+            Final enumeration table to be constructed in the implementation phase.
           examples: ["E-0001"]
         description:
           type: string
@@ -660,12 +662,20 @@ components:
       properties:
         command_id:
           type: string
-          description: Command identifier
-          examples: [CMD-12345]
-        type: 
+          description: Unique command identifier
+          examples: ["dc65a2b4-8f0b-486f-94ff-861382a3b23a"]
+        action: 
           type: string
-          enum: [UNLOCK_HATCH]
-          description: Command to execute
+          enum: 
+            - REBOOT
+            - SW_UPDATE
+            - REPORT_INFO
+            - REPORT_STATUS
+            - UNLOCK_HATCH
+          description: >
+            Command to execute.
+            NOTICE: This is an example list of commands. 
+            Final list of supported commands is made in the implementation phase.
         issued_at: 
           $ref: '#/components/schemas/Timestamp'
           description: Time when command was issued.
@@ -688,8 +698,8 @@ components:
       properties:
         command_id:
           type: string
-          description: Command identifier
-          examples: [CMD-12345]
+          description: Unique command identifier
+          examples: ["dc65a2b4-8f0b-486f-94ff-861382a3b23a"]
         finished_at: 
           $ref: '#/components/schemas/Timestamp'
           description: Time when command was finished.
